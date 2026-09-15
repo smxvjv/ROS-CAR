@@ -10,7 +10,7 @@
 | A / B 节点 | A 已接真实骨架适配器；B 仍为 NOT_READY |
 | demo | 显式模拟数据：9 秒目标可见、3 秒丢失，用于验证消息与展示 |
 | Mac → Jetson 同步脚本、模型清单、测试脚本 | 已建立 |
-| 讯飞流式 ASR/TTS → DeepSeek 语音助手 | Orin 真人语音 → 讯飞 IAT → DeepSeek 回答已跑通；TTS 暂停 |
+| 讯飞流式 ASR/TTS → DeepSeek 语音助手 | Orin 真人语音识别与 DeepSeek 回答已跑通；回答经阵列扬声器 TTS 播出，用户现场听到 |
 | DeepSeek 蜂鸣器工具链 | 白名单路由已建立；蜂鸣器属于下位机，协议适配延后 |
 | 相机、骨架与测距 | A 已在 Jetson 真人验收；YOLO 路线待实现，SDK 授权提示待厂商解释 |
 | 下位机串口驱动及两个依赖包 | 已迁入 chassis_vendor，默认跳过构建，未启动、未实机验证 |

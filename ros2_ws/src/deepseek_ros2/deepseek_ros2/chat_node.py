@@ -31,15 +31,15 @@ class DeepSeekChatNode(Node):
         self.declare_parameter(
             'system_prompt',
             '你是运行在室内 ROS 2 小车上的中文语音助手。回答简洁、口语化，'
-            '不要使用 Markdown。用户明确要求蜂鸣器响时必须调用 buzz 工具。'
-            '当前尚未开放车辆运动控制，不要声称已经执行车辆动作。',
+            '不要使用 Markdown。当前蜂鸣器下位机接口和车辆运动控制都尚未接通，'
+            '不要声称已经执行蜂鸣或车辆动作。',
         )
         self.declare_parameter('input_topic', '/voice/asr_text')
         self.declare_parameter('answer_topic', '/voice/assistant_text')
         self.declare_parameter('tts_topic', '/voice/tts_text')
         self.declare_parameter('tool_call_topic', '/voice/tool_call')
         self.declare_parameter('response_log_path', '')
-        self.declare_parameter('enable_tools', True)
+        self.declare_parameter('enable_tools', False)
         self.declare_parameter(
             'ignored_phrases',
             ['小车唤醒', '你好小微', '小微小微', '你好小薇', '小薇小薇'],

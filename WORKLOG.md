@@ -282,3 +282,12 @@
 - 厂商源码会在较宽泛的 AIUI 事件分支提前发布 `/awake_flag`，因此 ASR 改为默认禁用该原始订阅，只接受精确 `/voice_words = 小车唤醒` 作为可信硬件唤醒。可信唤醒后接受讯飞的低音量文本；手动 `/voice/start_listening` 仍受连续 160 ms 本地 VAD 约束，兼顾嘈杂环境与远程静音测试。
 - `run_voice_assistant.sh` 现自动叠加厂商工作区，并只启动 `wheeltec_mic_ros2/wheeltec_mic` 串口唤醒可执行程序；没有启动 `voice_control`、离线命令、反馈 WAV、灯光、蜂鸣器或车辆运动。
 - DeepSeek 节点新增追加式 UTF-8 JSONL 输出 `/home/wheeltec/ROSCAR/logs/deepseek_responses.jsonl`，每行仅含 UTC `timestamp` 和 `answer`。实机文本注入得到 `{"answer":"文件输出成功"}` 并成功落盘；ROS `/voice/assistant_text` 保持不变。相关单测总数增至 14 个并全部通过，结构检查为 8 包/60 个 Python 文件。
+
+## 2026-09-15：为麦克风阵列内置喇叭准备直接播报
+
+- 用户更正硬件：麦克风组件同时带喇叭。此前 Orin 声卡清单显示 `XFMDPV0018` 仅采集、C-Media `Device` 可播放；厂商 `play_path.h` 的反馈音频也使用 `plughw:CARD=Device,DEV=0`。同一组件中的录音与播放在 ALSA 下是两个不同声卡。
+- TTS 播放设备配置改为 C-Media，讯飞合成音量首次试播设为 30。`run_voice_assistant.sh` 默认启用 TTS；DeepSeek 回复经现有 `/voice/tts_text` 进入讯飞 WebAPI，原有 `/voice/speaking` 会在播报期间阻止 ASR 接收新提问。TTS 增加 15 秒响应超时、空音频检查和播放字节数日志；ALSA 子进程无论成功失败都释放引用。
+- 本地 Python 语法、协议/工具路由及 ALSA 清理单测共 16 个、结构与 diff 检查通过。`192.168.1.240:22` 曾短暂超时，网络恢复后重新 SSH 连接成功。将 TTS 源码、配置及启动脚本同步到板子；Orin 原生 Humble `xfyun_speech` 构建成功。凭据继续只留在板子私有文件，不写入仓库；未启动底盘或灯光。
+- 隔离 ROS 域 183 试播“语音播放测试”：讯飞返回 43058 字节 PCM，`aplay` 正常结束，用户确认听到。仅启动 DeepSeek + TTS 后注入“请用一句话介绍你自己”，DeepSeek 文本回答自动发布 `/voice/tts_text`，TTS 播放 420950 字节 PCM，用户也确认听到整段自我介绍。回答同时追加到独立 JSONL 文件。
+- 试播发现回答错误声称会控制蜂鸣器，但下位机尚未接通；将 `enable_tools` 默认和板子配置改为 false，系统提示明确不声称已蜂鸣或控制车辆。保留白名单/路由代码供后续接下位机。Orin 原生 Humble `deepseek_ros2` 与 `xfyun_speech` 重新构建成功；完整启动脚本域 183 验证五节点正常，注入“你现在可以控制蜂鸣器吗”后答“还不能”，TTS 播放 219760 字节 PCM。
+- 隔离测试节点全部干净退出。完整语音脚本已手动切到默认 ROS 域 182，唤醒串口、ASR、路由、DeepSeek、TTS 五节点已启动；等待用户再次说出“小微小微”及短问题，确认本轮新配置下的唤醒到播报链路。没有启动蜂鸣器 GPIO、底盘或灯光节点，也未设置开机自启动。

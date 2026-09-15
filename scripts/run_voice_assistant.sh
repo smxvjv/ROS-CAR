@@ -37,4 +37,4 @@ export ROS_DOMAIN_ID="${ROS_DOMAIN_ID:-182}"
 export ROS_LOCALHOST_ONLY="${ROS_LOCALHOST_ONLY:-0}"
 
 exec ros2 launch xfyun_speech voice_assistant.launch.py \
-  enable_wake_driver:=true enable_tts:=false enable_buzzer:=false "$@"
+  enable_wake_driver:=true enable_tts:=true enable_buzzer:=false "$@"

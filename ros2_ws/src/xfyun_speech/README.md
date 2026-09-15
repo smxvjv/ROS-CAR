@@ -26,12 +26,12 @@ cd /home/wheeltec/ROSCAR/ros2_ws
 source /opt/ros/humble/setup.bash
 colcon build --packages-select deepseek_ros2 voice_command_router xfyun_speech --symlink-install
 source install/setup.bash
-ros2 launch xfyun_speech voice_assistant.launch.py enable_tts:=false enable_buzzer:=false
+ros2 launch xfyun_speech voice_assistant.launch.py enable_tts:=true enable_buzzer:=false
 ```
 
 板子启动脚本会额外启动厂商 `wheeltec_mic` 串口节点，但仅使用其硬件唤醒事件，
 不会启动厂商离线识别、反馈音频或运动控制。默认唤醒词是“小微小微”：说出
-唤醒词、停顿约 1 秒后再说问题，`/awake_flag` 会触发一轮录音。没有唤醒驱动时
+唤醒词、停顿约 1 秒后再说问题，可信的 `/voice_words=小车唤醒` 会触发一轮录音。没有唤醒驱动时
 也可以手动触发：
 
 ```bash
@@ -48,10 +48,20 @@ ros2 topic pub --once /voice/asr_text std_msgs/msg/String "{data: '介绍一下�
 ros2 topic pub --once /voice/tts_text std_msgs/msg/String "{data: '语音合成测试'}"
 ```
 
-Orin 实测讯飞阵列声卡为 `plughw:CARD=XFMDPV0018,DEV=0`，支持
-16 kHz、16-bit、单声道采集，已写入默认配置。换麦克风后再用 `arecord -l`
-确认设备，并调整 `capture_device` 和能量阈值。当前链路不发布 `cmd_vel`，也不
-启动底盘控制节点；没有扬声器时保持 `enable_tts:=false`。
+Orin 实测阵列录音使用 `plughw:CARD=XFMDPV0018,DEV=0`，支持
+16 kHz、16-bit、单声道采集。播放使用同一阵列中的 C-Media USB 音频设备
+`plughw:CARD=Device,DEV=0`；厂商反馈音频代码也使用此设备。两者虽然在同一
+麦克风组件中，Linux 下是两个不同声卡。已写入板子默认配置，启动脚本默认启用
+TTS；首次测试合成音量设置为 30。换设备后分别用 `arecord -l`、`aplay -l`
+确认声卡并调整参数。若暂时不需要播放，给启动脚本追加 `enable_tts:=false`。
+当前链路不发布 `cmd_vel`，也不启动底盘控制节点。
+
+TTS 节点把 `/voice/tts_text` 转成 16 kHz 单声道 PCM，直接通过 ALSA 播放。
+开始播放时发布 `/voice/speaking=true`，ASR 在播报期间不接收唤醒，避免阵列
+听到自己的回复后再次提问。`/voice/tts_state` 会发布 `SPEAKING`、`IDLE`
+或错误信息。讯飞应用还需开通“在线语音合成”；如果 API 返回权限/发音人错误，
+应在讯飞控制台核对当前应用及 `xiaoyan` 发音人权限。首次测试用户已听到短
+测试语音及 DeepSeek 自我介绍；更换设备后仍应重新确认阵列喇叭和实际音量。
 
 DeepSeek 最终回答同时发布到 `/voice/assistant_text`，并按 JSON Lines 追加保存到
 `/home/wheeltec/ROSCAR/logs/deepseek_responses.jsonl`。可持续查看：
@@ -60,7 +70,8 @@ DeepSeek 最终回答同时发布到 `/voice/assistant_text`，并按 JSON Lines
 tail -f /home/wheeltec/ROSCAR/logs/deepseek_responses.jsonl
 ```
 
-DeepSeek 当前只开放一个 `buzz(duration_ms)` 工具。工具调用必须经过
-`voice_command_router` 二次校验，100--2000 ms 以外的请求会被拒绝。GPIO
-适配器默认不启动。现已确认蜂鸣器属于下位机，GPIO 适配器仅保留为可选占位，
-后续应根据底盘协议另写适配器，不能猜测 Jetson GPIO。
+`buzz(duration_ms)` 工具和 `voice_command_router` 的白名单校验代码仍保留，
+但当前 `enable_tools=false`，不会向 DeepSeek 开放蜂鸣能力，也不会声称已鸣响。
+工具调用若日后启用，仍必须经路由节点二次校验，100--2000 ms 以外会被拒绝。
+蜂鸣器属于下位机，GPIO 适配器仅为可选占位，后续须根据底盘协议写适配器，
+不能猜测 Jetson GPIO。

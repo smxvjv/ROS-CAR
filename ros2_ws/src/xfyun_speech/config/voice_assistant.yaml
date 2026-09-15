@@ -31,7 +31,7 @@ deepseek_chat:
     tts_topic: /voice/tts_text
     tool_call_topic: /voice/tool_call
     response_log_path: /home/wheeltec/ROSCAR/logs/deepseek_responses.jsonl
-    enable_tools: true
+    enable_tools: false
 
 voice_command_router:
   ros__parameters:
@@ -50,10 +50,10 @@ xfyun_tts:
   ros__parameters:
     endpoint: wss://tts-api.xfyun.cn/v2/tts
     input_topic: /voice/tts_text
-    playback_device: default
+    playback_device: plughw:CARD=Device,DEV=0
     sample_rate: 16000
     voice_name: xiaoyan
     speed: 50
-    volume: 50
+    volume: 30
     pitch: 50
     max_text_chars: 500

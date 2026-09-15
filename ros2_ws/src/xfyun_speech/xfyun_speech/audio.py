@@ -78,16 +78,19 @@ class AplaySink:
     def close(self):
         if self._process is None:
             return
-        if self._process.stdin is not None and not self._process.stdin.closed:
-            self._process.stdin.close()
+        process = self._process
         try:
-            return_code = self._process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            self._process.kill()
-            return_code = self._process.wait(timeout=2)
-        if return_code != 0:
-            detail = ''
-            if self._process.stderr is not None:
-                detail = self._process.stderr.read().decode('utf-8', errors='replace').strip()
-            raise RuntimeError(detail or f'aplay exited with status {return_code}')
-        self._process = None
+            if process.stdin is not None and not process.stdin.closed:
+                process.stdin.close()
+            try:
+                return_code = process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return_code = process.wait(timeout=2)
+            if return_code != 0:
+                detail = ''
+                if process.stderr is not None:
+                    detail = process.stderr.read().decode('utf-8', errors='replace').strip()
+                raise RuntimeError(detail or f'aplay exited with status {return_code}')
+        finally:
+            self._process = None

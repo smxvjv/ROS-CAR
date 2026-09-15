@@ -111,17 +111,25 @@ class XfyunTtsNode(Node):
         self._publish_state('SPEAKING')
         try:
             ws = websocket.create_connection(url, timeout=8)
+            ws.settimeout(15)
             sink.start()
             ws.send(json.dumps(request, ensure_ascii=False))
             complete = False
+            audio_bytes = 0
             while not complete and not self._stop.is_set():
                 raw = ws.recv()
                 if isinstance(raw, bytes):
                     raw = raw.decode('utf-8')
                 audio, complete = decode_tts_response(json.loads(raw))
                 sink.write(audio)
+                audio_bytes += len(audio)
+            if not complete:
+                raise RuntimeError('讯飞 TTS 未返回结束标识')
+            if audio_bytes == 0:
+                raise RuntimeError('讯飞 TTS 未返回音频数据')
             sink.close()
             sink = None
+            self.get_logger().info(f'TTS 播放完成，共 {audio_bytes} 字节 PCM')
         finally:
             if sink is not None:
                 sink.close()
