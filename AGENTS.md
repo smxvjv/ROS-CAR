@@ -61,4 +61,4 @@
 
 - 嘈杂车内环境改用精确 `/voice_words = 小车唤醒` 事件授权一轮识别，不直接信任厂商会对多种 AIUI 事件发布的 `/awake_flag`；交互为“小微小微”后停约 1 秒再提问。手动服务触发仍要求本地 VAD，纯噪声云端文本不会进入 DeepSeek。启动脚本仅附带厂商串口唤醒节点，不启动其离线识别、反馈音频、运动控制或灯光控制。DeepSeek 最终回答同时发布 `/voice/assistant_text` 并追加到 `/home/wheeltec/ROSCAR/logs/deepseek_responses.jsonl`，只存 UTC 时间和回答正文。
 
-- 2026-09-15 用户确认麦克风组件自带喇叭。Orin 声卡检查显示阵列采集是 `XFMDPV0018`、播放是 C-Media `Device`，厂商反馈音频亦使用 `plughw:CARD=Device,DEV=0`。TTS 播放配置与启动脚本已改为使用该设备并默认开启 TTS，首次合成音量 30；DeepSeek 文本到 `/voice/tts_text` 的发布链路原本就存在。旧 SSH 地址 `192.168.1.240` 短暂超时后恢复，Orin 原生 Humble 构建成功；讯飞 TTS 短测试及 DeepSeek 自我介绍均返回 PCM、ALSA 播放完成，用户现场确认听到。蜂鸣器下位机仍未接，`enable_tools=false`，助手不再声称已能蜂鸣。语音全链路启动脚本当前手动运行于 ROS 域 182，无底盘运动或灯光节点。新的唤醒到播报现场复测仍需用户再说一次问题确认。
+- 2026-09-15 用户确认麦克风组件自带喇叭。Orin 声卡检查显示阵列采集是 `XFMDPV0018`、播放是 C-Media `Device`，厂商反馈音频亦使用 `plughw:CARD=Device,DEV=0`。TTS 播放配置与启动脚本已改为使用该设备并默认开启 TTS，首次合成音量 30；DeepSeek 文本到 `/voice/tts_text` 的发布链路原本就存在。旧 SSH 地址 `192.168.1.240` 短暂超时后恢复，Orin 原生 Humble 构建成功；讯飞 TTS 短测试及 DeepSeek 自我介绍均返回 PCM、ALSA 播放完成，用户现场确认听到。蜂鸣器下位机仍未接，`enable_tools=false`，助手不再声称已能蜂鸣。语音全链路启动脚本当前手动运行于 ROS 域 182，无底盘运动或灯光节点。新配置下真人唤醒 → “你是人类吗？” IAT → DeepSeek → TTS 完成，回答 JSONL 已落盘；该次人耳是否听到仍待用户确认。
