@@ -426,3 +426,40 @@
 - 修复同步到 `/home/wheeltec/ROSCAR-red` 后，xfyun_speech 原生 Humble 构建成功，协议和 WebSocket 超时恢复共 5 项测试通过。为避免与他人正在调整的跟随会话耦合，语音改为独立 `roscar-voice` tmux 会话；未重启或修改跟随进程。
 - 真人连续完成两轮完整链路：“你是人类吗？”与“你好吗？”均收到硬件唤醒、LISTENING、ASR_TEXT、DeepSeek ANSWER、TTS `SPEAKING→IDLE`，用户现场听到播报，日志未再出现发送超时。中间两次只唤醒未发出超过阈值的语音被安全丢弃。
 - `scripts/run_voice_assistant.sh` 从硬编码 `enable_tts:=false` 改为默认开启，可用 `VOICE_TTS_ENABLED=false` 恢复纯文本模式；配置固定已验证 USB 播放设备。同步更新 README。未修改跟随代码或参数。
+## 2026-09-16：在线三维坐标只读检查
+
+- 用户明确授权上车核对，SSH roscar-wifi 成功。实际运行目录 /home/wheeltec/ROSCAR-red，相机硬件2bc5:0402 Astra，厂商相机已开彩色/深度及depth_registration；新A启用配准确认、底盘参数car_mode=mini_akm。这只是读取当前配置，不代表本轮核验实物车型。
+- 第一条目标状态为TRACKING但detail=Red target; depth rejected、position_valid=false、XYZ NaN。12秒只读订阅240条状态：182条深度拒绝、31条Registered mask depth有效、21条LOST、6条SEARCHING；随后6秒122条均无有效位置。
+- 读取RGB/深度/CameraInfo：640×480、rgb8/16UC1、frame均camera_color_optical_frame；彩色P的fx/fy约570.342，cx319.5、cy239.5。深度P与彩色P相同，但深度K包含NaN。仅相同frame/P不能证明真实像素对齐或测距准确。
+- 247次最新图像配对诊断（诊断采样并非message_filters精确同步）：最大红块约x304–364/y247–268，面积约800像素，多数目标区域深度100%为零，全图有效深度约23–24%。偶然有效样本掩码有效率72.7%、中位深度1.107m、计算XYZ约(0.0243,0.0437,1.107)m；该值不是物理精度验收，可能仍受对齐/背景影响。
+- 当前person_follower动态enabled=true（启动命令曾为false），240条cmd_vel里5条非零；已明确告知用户深度恢复可能驱动车辆。本轮仅新建临时只读订阅器，结束即退出，未改参数、未发指令、未重启或部署。
+- 结论：当前不能稳定发布可确认准确的坐标，主要直接证据是目标ROI缺失深度；下一步需在运动禁用的受控条件下，结合目标材质/距离/现场真值、深度图和标定配准检查。最小审查区分有效坐标、稳定性和绝对精度，未把推测的硬件原因当定论。
+
+## 2026-09-16：红纸板稳定坐标复测
+
+- 用户已放红纸板并要求下一步修复；先关闭当前在线 person_follower enabled（参数设置成功），没有启用或重启任何运动节点。
+- 初始坐标有效，随后15秒302条TargetState全部TRACKING、Registered mask depth、position_valid=true，目标ID均red:17；300条Marker ADD，坐标系camera_color_optical_frame。301条cmd_vel全部零。
+- 中位XYZ为(0.05039,-0.04548,1.40200)m；X范围0.04548–0.05531m、Y范围-0.04793至-0.04302m，Z该窗口均为1.40200m。观测年龄中位40.7ms、范围24.6–115.8ms。这是观测统计，不是物理精度验证。
+- 结论：更换目标后有效深度和坐标已稳定恢复，没有证据需要放宽测距过滤或修改算法。本轮未修改远端源码；已请求镜头到纸板实测距离以判断绝对误差。若Foxglove仍无3D，先检查target_marker与实际光学坐标系。
+- 最小审查确认状态/Marker/零速度三者相符。运动保持禁用，待现场验证后再决定是否恢复。
+
+## 2026-09-16：按用户要求恢复跟随使能
+
+- 用户要求打开追踪，按上下文恢复跟随运动。先只读确认 enabled=false、目标red:22 TRACKING/position_valid=true、距离1.402m、偏角0.0184rad、cmd_vel全零。
+- 在线设置 /person_follower enabled=true 成功并读回True；随后一条cmd_vel仍全零，符合2m保持距离与当前居中目标。未改控制参数或部署代码；未据此声称实际位移或完整跟随验收。
+- 最小审查：变更仅运行期enabled，目标状态与速度行为一致。当前跟随已使能，后续目标远离或偏转可能产生运动。
+
+## 2026-09-16：超过1米跟随
+
+- 按用户要求将默认 target_distance_m 从2.0改为1.0、distance_deadband_m 从0.15改为0；保持限速、偏角死区、目标失效停车和不倒车逻辑。该共享默认也适用于未显式覆盖参数的骨架跟随器。
+- 先在线关闭 enabled；远端仅定点修改 follow_control.py（保留 before-1m 备份），Humble原生构建 astra_body_adapter 成功（总体4.08秒）。停止旧项目进程后，以原相机/串口配置且 MOTION_ENABLED=false 重启；新 tmux 会话 roscar-red-1m，语音关闭。
+- 读回 target_distance_m=1.0、distance_deadband_m=0.0、enabled=false 后按既有授权设为true并读回。有效红色目标抽样 XYZ=(0.03244,-0.01140,1.0)m、水平距离1.000526m、偏角0.03243rad，速度抽样前进0.000351m/s、转向0。没有据此认定实车位移；测距偏差未校正。
+- 新增默认阈值边界测试（0.8/1.0m不前进、1.01m前进、1.4m限速）；原2m参数测试显式保留配置，串口闭环停止样例改为0.8m，保持32FC1单位测试。同步更新红色方案文档。
+- 验证完成：本机 Linux ARM64 Humble 9个主动包（13.5秒）与3个可选底盘包（18.1秒）构建成功；默认1米边界、A控制/锁定/新鲜度、真实C++驱动PTY与合成红色RGB-D闭环、A/B/red/demo及非法路由、视频/性能与14项语音逻辑回归全部通过。日志 artifacts/follow-1m-test.log。最小审查和 git diff --check 通过；未修改开机服务或将运动使能设为启动默认。
+
+## 2026-09-16：跟随阈值进一步调整为30厘米
+
+- 用户要求将1m改为30cm。修改共享FollowConfig默认target_distance_m=0.3，距离死区0，保留限速、不倒车及目标失效停车；更新方案文档。
+- 先在线禁用运动，定点修改远端源码并备份至/tmp/follow_control.before-30cm.py。Jetson astra_body_adapter原生构建成功（总体3.75秒），停止旧栈后以运动关闭启动tmux roscar-red-30cm；相机、串口和语音开关沿用上一轮。读回0.3/0.0/false后恢复enabled=true并确认，cmd_vel抽样为前进0.15m/s、转向0，不代表已验证实际位移或30cm停止精度。相机测距偏差仍未校正。
+- 新默认边界测试覆盖0.25/0.30m不前进、0.31m前进、0.70m限速；串口闭环32FC1停止样例调整为0.25m。本机26项适配器/控制测试通过。
+- 本机Linux ARM64 Humble完整回归通过：9个主动包与3个底盘包编译、真实驱动PTY和红色RGB-D闭环、A/B/red/demo/非法路由、视频/性能及语音测试，日志artifacts/follow-30cm-test.log。最小审查和git diff --check通过。
