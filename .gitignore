@@ -30,3 +30,8 @@ ros2_ws/src/wheeltec_mic_aiui/AIUI/cfg/aiui.cfg
 /ros2_ws/chassis_build/
 /ros2_ws/chassis_install/
 /ros2_ws/chassis_log/
+
+# Local agent notes and workstation-only Foxglove layout
+/AGENTS.md
+/WORKLOG.md
+/red-layout.json
